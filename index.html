@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestão da Pelada - Gerenciamento Profissional de Futebol</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚽</text></svg>">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <span class="brand-icon">⚽</span>
+        <h1 class="brand-title">Gestão da Pelada</h1>
+      </div>
+      <div class="header-actions">
+        <button id="btn-open-excel" class="btn btn-secondary btn-sm" onclick="openExcelModal()">
+          📥 Importar Excel
+        </button>
+        <button id="btn-export-excel" class="btn btn-secondary btn-sm" onclick="exportExcel()">
+          📤 Exportar Excel
+        </button>
+        <button id="btn-end-pelada" class="btn btn-danger btn-sm" onclick="confirmEndPelada()">
+          🚨 Fim da Pelada
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Indicators Bar -->
+  <section class="stats-bar">
+    <div class="stats-container">
+      <div class="stat-card">
+        <span id="stat-presentes" class="stat-value">0</span>
+        <span class="stat-label">Presentes</span>
+      </div>
+      <div class="stat-card">
+        <span id="stat-mensalistas" class="stat-value">0</span>
+        <span class="stat-label">Mensalistas</span>
+      </div>
+      <div class="stat-card">
+        <span id="stat-convidados" class="stat-value">0</span>
+        <span class="stat-label">Convidados</span>
+      </div>
+      <div class="stat-card">
+        <span id="stat-times-completos" class="stat-value">0</span>
+        <span class="stat-label">Times Completos</span>
+      </div>
+      <div class="stat-card">
+        <span id="stat-ultimo-time" class="stat-value">0</span>
+        <span class="stat-label">Último Time</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Application Content -->
+  <main class="main-content">
+
+    <!-- PRE-MATCH VIEW -->
+    <div id="view-pre-match" class="grid-3-columns">
+      
+      <!-- Left Column: Mensalistas Permanent Registry -->
+      <div class="column-card">
+        <div class="column-header">
+          <h2 class="column-title">📋 Mensalistas</h2>
+          <button class="btn btn-green btn-sm" onclick="openAddMensalistaModal()">+ Novo</button>
+        </div>
+        
+        <div class="input-group">
+          <input type="text" id="search-mensalistas" class="input-control" placeholder="🔍 Pesquisar mensalista..." oninput="filterMensalistas()">
+        </div>
+
+        <div id="mensalistas-list" class="player-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Center Column: Arrival Order (Fila do Dia) -->
+      <div class="column-card">
+        <div class="column-header">
+          <h2 class="column-title">⏱️ Fila do Dia (Chegada)</h2>
+          <span id="badge-total-fila" class="badge badge-mensalista">0 atletas</span>
+        </div>
+
+        <div id="fila-list" class="player-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Right Column: Add Convidado & Form Teams -->
+      <div class="column-card">
+        <div class="column-header">
+          <h2 class="column-title">⚙️ Painel do Dia</h2>
+        </div>
+
+        <!-- Add Convidado Form -->
+        <div style="background:#f8fafc; padding:1rem; border-radius:12px; border:1px solid #e2e8f0;">
+          <h3 style="font-size:0.95rem; font-weight:700; margin-bottom:0.75rem;">👤 Adicionar Convidado</h3>
+          <form onsubmit="handleAddConvidado(event)" style="display:flex; flex-direction:column; gap:0.75rem;">
+            <div class="input-group">
+              <label class="input-label">Nome do Convidado</label>
+              <input type="text" id="input-convidado-nome" class="input-control" placeholder="Ex: Lucas Amigo de João" required>
+            </div>
+            <div class="input-group">
+              <label class="input-label">Classificação Técnica (1 a 5 Estrelas)</label>
+              <div class="stars-selector" id="convidado-stars-selector">
+                <span class="star-option active" data-value="1">★</span>
+                <span class="star-option active" data-value="2">★</span>
+                <span class="star-option active" data-value="3">★</span>
+                <span class="star-option" data-value="4">★</span>
+                <span class="star-option" data-value="5">★</span>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-block">+ Cadastrar Convidado</button>
+          </form>
+        </div>
+
+        <!-- Form Teams Action -->
+        <div style="margin-top:1rem; display:flex; flex-direction:column; gap:0.75rem;">
+          <button id="btn-form-teams" class="btn btn-primary btn-block" style="font-size:1.1rem; padding:1rem;" onclick="handleFormTeams()">
+            🎲 Sorteia e Monta os Times
+          </button>
+          <p style="font-size:0.8rem; color:var(--text-muted); text-align:center;">
+            Os times serão equilibrados automaticamente combinando a soma e média de estrelas de 5 jogadores por time.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MATCH CONTROL VIEW (Active Session) -->
+    <div id="view-match-control" class="pitch-container" style="display: none;">
+      
+      <!-- Scoreboard Panel -->
+      <div class="scoreboard-card">
+        <h2 class="scoreboard-title">⚡ Partida em Quadra</h2>
+        
+        <div class="scoreboard-teams">
+          <div class="team-score-box">
+            <h3 id="score-team-a-name" style="font-size:1.4rem;">Time 1</h3>
+            <span id="score-team-a-stats" style="font-size:0.85rem; color:var(--light-green);">Soma: 0 ★ | Média: 0.0</span>
+            <input type="number" id="score-team-a-goals" class="score-input" min="0" value="0">
+          </div>
+
+          <div class="vs-badge">VS</div>
+
+          <div class="team-score-box">
+            <h3 id="score-team-b-name" style="font-size:1.4rem;">Time 2</h3>
+            <span id="score-team-b-stats" style="font-size:0.85rem; color:var(--light-green);">Soma: 0 ★ | Média: 0.0</span>
+            <input type="number" id="score-team-b-goals" class="score-input" min="0" value="0">
+          </div>
+        </div>
+
+        <div style="margin-top:1.5rem; display:flex; justify-content:center; gap:0.75rem; flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="handleRecordMatch()">
+            ⚽ Confirmar Placar e Fazer Rodízio
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="openSwapModal()">
+            🔀 Substituição / Troca Manual
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="openLateArrivalModal()">
+            ➕ Adicionar Jogador Tardio
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="handleUndoLastAction()">
+            ↩️ Desfazer Ação
+          </button>
+        </div>
+      </div>
+
+      <!-- Teams Cards Grid -->
+      <div>
+        <h2 style="font-size:1.2rem; font-weight:700; margin-bottom:1rem; color:var(--primary-dark);">
+          🛡️ Escalação dos Times
+        </h2>
+        <div id="teams-grid" class="teams-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Match & Substitution History -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;" class="grid-3-columns">
+        <div class="column-card">
+          <h3 class="column-title">📜 Histórico de Partidas</h3>
+          <div id="match-history-list" style="max-height:250px; overflow-y:auto; font-size:0.9rem;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+        <div class="column-card">
+          <h3 class="column-title">🏥 Substituições e Saídas</h3>
+          <div id="sub-history-list" style="max-height:250px; overflow-y:auto; font-size:0.9rem;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODALS -->
+
+  <!-- Modal: Excel Import -->
+  <div id="modal-excel" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <h3 class="modal-title">📥 Importar Mensalistas via Excel</h3>
+      
+      <div class="input-group">
+        <label class="input-label">Selecione a planilha (.xlsx ou .xls)</label>
+        <input type="file" id="excel-file-input" class="input-control" accept=".xlsx,.xls">
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <button class="btn btn-secondary btn-sm" onclick="downloadExcelTemplate()">📄 Baixar Modelo de Excel</button>
+        <button class="btn btn-green btn-sm" onclick="handleValidateExcel()">Validar Arquivo</button>
+      </div>
+
+      <div id="excel-summary-container" style="display:none; background:#f8fafc; border:1px solid #cbd5e1; border-radius:12px; padding:1rem; margin-top:0.5rem;">
+        <h4 style="font-weight:700; margin-bottom:0.5rem;">Resumo da Validação:</h4>
+        <ul style="font-size:0.9rem; margin-left:1.2rem; color:var(--text-dark);">
+          <li>Novos Mensalistas: <strong id="sum-novos" style="color:var(--accent-green)">0</strong></li>
+          <li>Atualizações: <strong id="sum-atualizados" style="color:var(--accent-orange)">0</strong></li>
+          <li>Duplicidades no arquivo/BD: <strong id="sum-duplicados" style="color:var(--danger-red)">0</strong></li>
+          <li>Linhas Inválidas: <strong id="sum-invalidos" style="color:var(--danger-red)">0</strong></li>
+          <li>Total a Importar: <strong id="sum-total">0</strong></li>
+        </ul>
+        <div id="excel-invalid-details" style="margin-top:0.5rem; font-size:0.8rem; color:var(--danger-red);"></div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
+        <button class="btn btn-secondary" onclick="closeModal('modal-excel')">Cancelar</button>
+        <button id="btn-confirm-import" class="btn btn-primary" style="display:none;" onclick="handleConfirmExcelImport()">Confirmar Importação</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Confirm End Pelada -->
+  <div id="modal-end-pelada" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <h3 class="modal-title" style="color:var(--danger-red);">🚨 Confirmar Encerramento da Pelada</h3>
+      <p style="font-size:0.95rem; color:var(--text-dark);">
+        Deseja realmente encerrar a pelada do dia? Esta ação apagará presenças, times, fila, placares e histórico da sessão atual. O cadastro permanente dos mensalistas será mantido.
+      </p>
+      <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
+        <button class="btn btn-secondary" onclick="closeModal('modal-end-pelada')">Cancelar</button>
+        <button class="btn btn-danger" onclick="handleExecuteEndPelada()">Confirmar Encerramento</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Player Exit / Injury with Manual Substitute Selector -->
+  <div id="modal-player-exit" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <h3 class="modal-title">🏃‍♂️ Saída / Substituição de Atleta</h3>
+      <p id="exit-modal-player-info" style="font-size:0.95rem; font-weight:600;"></p>
+      
+      <div class="input-group">
+        <label class="input-label">Motivo da Saída</label>
+        <select id="exit-motivo-select" class="input-control">
+          <option value="saida">Saída Normal</option>
+          <option value="contusao">Contusão / Lesão</option>
+        </select>
+      </div>
+
+      <div class="input-group" style="margin-top:0.5rem;">
+        <label class="input-label">Escolher Substituto (Automático ou Seleção Manual)</label>
+        <select id="exit-substitut-select" class="input-control"></select>
+      </div>
+
+      <div id="exit-sub-suggestion-box" style="background:#f0fdf4; border:1px solid #86efac; padding:0.75rem; border-radius:12px; font-size:0.85rem; margin-top:0.5rem;">
+        <!-- Filled dynamically -->
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
+        <button class="btn btn-secondary" onclick="closeModal('modal-player-exit')">Cancelar</button>
+        <button class="btn btn-primary" onclick="handleConfirmPlayerExit()">Confirmar Substituição</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Manual Player Swap Between Teams -->
+  <div id="modal-swap-players" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <h3 class="modal-title">🔀 Troca Manual de Jogadores Entre Times</h3>
+      <p style="font-size:0.85rem; color:var(--text-muted);">
+        Selecione dois jogadores escalados em times diferentes para trocá-los de equipe.
+      </p>
+
+      <div class="input-group">
+        <label class="input-label">Jogador A (Origem)</label>
+        <select id="swap-player-1-select" class="input-control"></select>
+      </div>
+
+      <div class="input-group" style="margin-top:0.5rem;">
+        <label class="input-label">Jogador B (Destino)</label>
+        <select id="swap-player-2-select" class="input-control"></select>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
+        <button class="btn btn-secondary" onclick="closeModal('modal-swap-players')">Cancelar</button>
+        <button class="btn btn-primary" onclick="handleConfirmSwapPlayers()">Confirmar Troca</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Late Arrival -->
+  <div id="modal-late-arrival" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <h3 class="modal-title">➕ Adicionar Jogador após o Sorteio</h3>
+      
+      <div class="input-group">
+        <label class="input-label">Tipo de Jogador</label>
+        <select id="late-type-select" class="input-control" onchange="toggleLateArrivalType()">
+          <option value="mensalista">Mensalista Cadastrado</option>
+          <option value="convidado">Novo Convidado</option>
+        </select>
+      </div>
+
+      <div id="late-mensalista-box" class="input-group">
+        <label class="input-label">Selecione o Mensalista</label>
+        <select id="late-mensalista-select" class="input-control"></select>
+      </div>
+
+      <div id="late-convidado-box" style="display:none;" class="input-group">
+        <label class="input-label">Nome do Convidado</label>
+        <input type="text" id="late-convidado-nome" class="input-control" placeholder="Ex: Carlos Convidado">
+        <label class="input-label" style="margin-top:0.5rem;">Estrelas (1 a 5)</label>
+        <input type="number" id="late-convidado-stars" class="input-control" min="1" max="5" value="3">
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
+        <button class="btn btn-secondary" onclick="closeModal('modal-late-arrival')">Cancelar</button>
+        <button class="btn btn-primary" onclick="handleConfirmLateArrival()">Adicionar ao Último Time</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add / Edit Mensalista -->
+  <div id="modal-mensalista-crud" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <h3 id="modal-mensalista-title" class="modal-title">Adicionar Mensalista</h3>
+      <form onsubmit="handleSaveMensalista(event)" style="display:flex; flex-direction:column; gap:1rem;">
+        <input type="hidden" id="edit-mensalista-id">
+        <div class="input-group">
+          <label class="input-label">Nome Completo</label>
+          <input type="text" id="edit-mensalista-nome" class="input-control" required placeholder="Nome do jogador">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Estrelas (1 a 5)</label>
+          <input type="number" id="edit-mensalista-estrelas" class="input-control" min="1" max="5" value="3" required>
+        </div>
+        <div class="input-group" style="flex-direction:row; align-items:center; gap:0.5rem;">
+          <input type="checkbox" id="edit-mensalista-ativo" checked style="width:18px; height:18px;">
+          <label for="edit-mensalista-ativo" class="input-label">Jogador Ativo</label>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-mensalista-crud')">Cancelar</button>
+          <button type="submit" class="btn btn-green">Salvar Mensalista</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
